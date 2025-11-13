@@ -9,8 +9,6 @@ lerna-debug.log*
 
 node_modules
 *.local
-moviemaster-pro-ce383-firebase-adminsdk-fbsvc-29a273bd30.json
-
 
 # Editor directories and files
 .vscode/*
