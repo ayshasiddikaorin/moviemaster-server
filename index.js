@@ -17,7 +17,8 @@ admin.initializeApp({
 
 
 // হার্ডকোডেড MongoDB URI (কোনো .env লাগবে না)
-const uri = "mongodb+srv://movemasterdb:f61CTQ2Q8CYXnWRy@cluster0.tbqceff.mongodb.net/?appName=Cluster0";
+// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.tbqceff.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb+srv://movemasterdb:f61CTQ2Q8CYXnWRy@cluster0.tbqceff.mongodb.net/?appName=Cluster0`;
 
 const client = new MongoClient(uri, {
   serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true },
@@ -28,7 +29,7 @@ async function run() {
     await client.connect();
     const db = client.db("movemasterdb");
     const movieCollection = db.collection("movies");
-    const watchListCollection= db.collection("watchList");
+    const watchListCollection = db.collection("watchList");
 
     console.log("MongoDB Connected!");
 
@@ -37,7 +38,7 @@ async function run() {
       const movies = await movieCollection.find().toArray();
       res.json(movies);
     });
-  
+
 
     // GET: Single Movie
     app.get("/api/movies/:id", async (req, res) => {
@@ -53,11 +54,27 @@ async function run() {
       res.status(201).json({ _id: result.insertedId, ...movie });
     });
 
-     // POST: Add WatchList
+    // POST: Add WatchList
     app.post("/api/watchListInsert", async (req, res) => {
       const movie = { ...req.body, createdAt: new Date() };
       const result = await watchListCollection.insertOne(movie);
       res.status(201).json({ _id: result.insertedId, ...movie });
+    });
+    // Check if a movie is in user's watchlist
+    app.get("/api/watchlist/check/:addedBy/:movieId", async (req, res) => {
+      try {
+        const { addedBy, movieId } = req.params;
+
+        const existing = await watchListCollection.findOne({
+          addedBy,
+          movieId
+        });
+
+        res.json({ exists: !!existing });
+      } catch (err) {
+        console.error("GET /api/watchlist/check error:", err);
+        res.status(500).json({ message: "Server error" });
+      }
     });
 
     // PUT: Update Movie
@@ -75,6 +92,13 @@ async function run() {
       const result = await movieCollection.deleteOne({ _id: new ObjectId(req.params.id) });
       if (result.deletedCount === 0) return res.status(404).json({ message: "Not found" });
       res.json({ message: "Deleted" });
+    });
+
+    // MY watch List
+    app.get("/api/myWatchList/:userid", async (req, res) => {
+      const watchList = await watchListCollection.findOne({ _id: new ObjectId(req.params.userid) });
+      if (!watchList) return res.status(404).json({ message: "Not found" });
+      res.json(watchList);
     });
 
     // DELETE: Delete WatchList
