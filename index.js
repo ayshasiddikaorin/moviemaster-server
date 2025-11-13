@@ -11,14 +11,9 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-
-
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
-
-
 
 
 // হার্ডকোডেড MongoDB URI (কোনো .env লাগবে না)
@@ -33,6 +28,7 @@ async function run() {
     await client.connect();
     const db = client.db("movemasterdb");
     const movieCollection = db.collection("movies");
+    const watchListCollection= db.collection("watchList");
 
     console.log("MongoDB Connected!");
 
@@ -41,6 +37,7 @@ async function run() {
       const movies = await movieCollection.find().toArray();
       res.json(movies);
     });
+  
 
     // GET: Single Movie
     app.get("/api/movies/:id", async (req, res) => {
@@ -53,6 +50,13 @@ async function run() {
     app.post("/api/movies", async (req, res) => {
       const movie = { ...req.body, createdAt: new Date() };
       const result = await movieCollection.insertOne(movie);
+      res.status(201).json({ _id: result.insertedId, ...movie });
+    });
+
+     // POST: Add WatchList
+    app.post("/api/watchListInsert", async (req, res) => {
+      const movie = { ...req.body, createdAt: new Date() };
+      const result = await watchListCollection.insertOne(movie);
       res.status(201).json({ _id: result.insertedId, ...movie });
     });
 
@@ -69,6 +73,13 @@ async function run() {
     // DELETE: Delete Movie
     app.delete("/api/movies/:id", async (req, res) => {
       const result = await movieCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+      if (result.deletedCount === 0) return res.status(404).json({ message: "Not found" });
+      res.json({ message: "Deleted" });
+    });
+
+    // DELETE: Delete WatchList
+    app.delete("/api/watchListDelete/:id", async (req, res) => {
+      const result = await watchListCollection.deleteOne({ _id: new ObjectId(req.params.id) });
       if (result.deletedCount === 0) return res.status(404).json({ message: "Not found" });
       res.json({ message: "Deleted" });
     });
