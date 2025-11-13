@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
-
+require("dotevn").config()
 const serviceAccount = require("./moviemaster-pro-ce383-firebase-adminsdk-fbsvc-29a273bd30.json");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -15,8 +15,6 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-
-// হার্ডকোডেড MongoDB URI (কোনো .env লাগবে না)
 // const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.tbqceff.mongodb.net/?appName=Cluster0`;
 const uri = `mongodb+srv://movemasterdb:f61CTQ2Q8CYXnWRy@cluster0.tbqceff.mongodb.net/?appName=Cluster0`;
 
