@@ -115,7 +115,7 @@ app.put("/movies/:id", handle(async (req, res) => {
   if (!result.matchedCount) return res.status(404).json({ message: "Not found" });
   res.json({ message: "Updated" });
 }));
-
+ 
 // Delete movie
 app.delete("/movies/:id", handle(async (req, res) => {
   const db = await getDb();
