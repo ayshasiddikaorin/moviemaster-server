@@ -9,8 +9,28 @@ const admin = require("firebase-admin");
 
 // ---------- Express ----------
 const app = express();
-app.use(cors());
 app.use(express.json());
+
+// ---------- CORS FIX ----------
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "https://startling-cupcake-39922c.netlify.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  next();
+});
+
+// Optional additional CORS middleware
+app.use(cors({
+  origin: "https://startling-cupcake-39922c.netlify.app",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 
 // ---------- Firebase ----------
 let firebaseInitialized = false;
@@ -23,7 +43,7 @@ function initFirebase() {
     console.log("Firebase Admin initialized");
   } catch (e) {
     console.error("Firebase init error:", e);
-    throw e; // crash early – Vercel will show the error
+    throw e;
   }
 }
 
