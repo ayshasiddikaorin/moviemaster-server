@@ -64,7 +64,7 @@ async function getDb() {
   if (!dbPromise) {
     await client.connect();
     console.log("MongoDB connected");
-    dbPromise = client.db("moviemasterdb");
+    dbPromise = client.db("movemasterdb");
   }
   return dbPromise;
 }
