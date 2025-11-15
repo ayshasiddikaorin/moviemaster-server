@@ -79,14 +79,14 @@ const handle = (fn) => (req, res) =>
 // ---------- Routes ----------
 
 // Get all movies
-app.get("/movies", handle(async (req, res) => {
+app.get("/api/movies", handle(async (req, res) => {
   const db = await getDb();
   const movies = await db.collection("movies").find().toArray();
   res.json(movies);
 }));
 
 // Get movie by ID
-app.get("/movies/:id", handle(async (req, res) => {
+app.get("/api/movies/:id", handle(async (req, res) => {
   const db = await getDb();
   const movie = await db.collection("movies").findOne({
     _id: new ObjectId(req.params.id),
@@ -97,7 +97,7 @@ app.get("/movies/:id", handle(async (req, res) => {
 }));
 
 // Add movie
-app.post("/movies", handle(async (req, res) => {
+app.post("/api/movies", handle(async (req, res) => {
   const db = await getDb();
   const movie = { ...req.body, createdAt: new Date() };
   const result = await db.collection("movies").insertOne(movie);
@@ -105,7 +105,7 @@ app.post("/movies", handle(async (req, res) => {
 }));
 
 // Update movie
-app.put("/movies/:id", handle(async (req, res) => {
+app.put("/api/movies/:id", handle(async (req, res) => {
   const db = await getDb();
   const result = await db.collection("movies").updateOne(
     { _id: new ObjectId(req.params.id) },
@@ -117,7 +117,7 @@ app.put("/movies/:id", handle(async (req, res) => {
 }));
  
 // Delete movie
-app.delete("/movies/:id", handle(async (req, res) => {
+app.delete("/api/movies/:id", handle(async (req, res) => {
   const db = await getDb();
   const result = await db.collection("movies").deleteOne({
     _id: new ObjectId(req.params.id),
@@ -130,7 +130,7 @@ app.delete("/movies/:id", handle(async (req, res) => {
 // ---------- Watchlist ----------
 
 // Insert
-app.post("/watchListInsert", handle(async (req, res) => {
+app.post("/api/watchListInsert", handle(async (req, res) => {
   const db = await getDb();
   const movie = { ...req.body, createdAt: new Date() };
   const result = await db.collection("watchList").insertOne(movie);
@@ -138,7 +138,7 @@ app.post("/watchListInsert", handle(async (req, res) => {
 }));
 
 // Get user's watchlist
-app.get("/myWatchList/:addedBy", handle(async (req, res) => {
+app.get("/api/myWatchList/:addedBy", handle(async (req, res) => {
   const db = await getDb();
   const items = await db.collection("watchList").find({
     addedBy: req.params.addedBy,
@@ -149,7 +149,7 @@ app.get("/myWatchList/:addedBy", handle(async (req, res) => {
 }));
 
 // Delete from watchlist
-app.delete("/watchListDelete/:addedBy/:movieId", handle(async (req, res) => {
+app.delete("/api/watchListDelete/:addedBy/:movieId", handle(async (req, res) => {
   const db = await getDb();
   const result = await db.collection("watchList").deleteOne({
     addedBy: req.params.addedBy,
@@ -161,7 +161,7 @@ app.delete("/watchListDelete/:addedBy/:movieId", handle(async (req, res) => {
 }));
 
 // Check if movie is in watchlist
-app.get("/watchlist/check/:addedBy/:movieId", handle(async (req, res) => {
+app.get("/api/watchlist/check/:addedBy/:movieId", handle(async (req, res) => {
   const db = await getDb();
   const item = await db.collection("watchList").findOne({
     addedBy: req.params.addedBy,
