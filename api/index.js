@@ -37,19 +37,41 @@ app.use((req, res, next) => {
 // ---------- Firebase ----------
 // Initialize Firebase Admin on startup
 let firebaseInitialized = false;
+
 function initFirebase() {
   if (firebaseInitialized) return;
 
+  let serviceAccount;
+
   try {
-    const cfg = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({ credential: admin.credential.cert(cfg) });
+    // Production (Vercel) → use env var
+    if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+      if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+        throw new Error("FIREBASE_SERVICE_ACCOUNT missing in production");
+      }
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } else {
+      serviceAccount = require("./firebase-service-account.json"); // ← create this file
+    }
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+
     firebaseInitialized = true;
-    console.log("Firebase Admin initialized");
+    console.log("Firebase Admin initialized successfully");
   } catch (e) {
-    console.error("Firebase init error:", e);
-    throw e;
+    console.error("Firebase init failed:", e.message);
+    // Don't crash the whole server locally if you're just testing
+    if (process.env.NODE_ENV !== "production") {
+      console.log("Running without Firebase auth (local dev only)");
+      firebaseInitialized = false; // auth will 401 but server stays up
+    } else {
+      throw e; // crash in production if env var is broken
+    }
   }
 }
+
 initFirebase(); // Call it here to ensure it's ready
 
 // Authentication middleware to verify Firebase ID token
@@ -151,10 +173,10 @@ app.delete("/api/movies/:id", verifyToken, handle(async (req, res) => {
 // Insert (require auth, set addedBy from token, ignore body addedBy)
 app.post("/api/watchListInsert", verifyToken, handle(async (req, res) => {
   const db = await getDb();
-  const movie = { 
-    ...req.body, 
+  const movie = {
+    ...req.body,
     addedBy: req.user.uid, // Enforce from authenticated user
-    createdAt: new Date() 
+    createdAt: new Date()
   };
   const result = await db.collection("watchList").insertOne(movie);
   res.status(201).json({ _id: result.insertedId, ...movie });
