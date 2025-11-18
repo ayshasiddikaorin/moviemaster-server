@@ -1,4 +1,3 @@
-// api/index.js
 require("dotenv").config();
 
 const express = require("express");
@@ -36,6 +35,7 @@ app.use((req, res, next) => {
 });
 
 // ---------- Firebase ----------
+// Initialize Firebase Admin on startup
 let firebaseInitialized = false;
 function initFirebase() {
   if (firebaseInitialized) return;
@@ -48,6 +48,25 @@ function initFirebase() {
   } catch (e) {
     console.error("Firebase init error:", e);
     throw e;
+  }
+}
+initFirebase(); // Call it here to ensure it's ready
+
+// Authentication middleware to verify Firebase ID token
+async function verifyToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized: Missing token" });
+  }
+
+  const idToken = authHeader.split(" ")[1];
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken; // Attach user info (e.g., uid) to req
+    next();
+  } catch (error) {
+    console.error("Token verification error:", error);
+    res.status(401).json({ message: "Invalid token" });
   }
 }
 
@@ -78,14 +97,14 @@ const handle = (fn) => (req, res) =>
 
 // ---------- Routes ----------
 
-// Get all movies
+// Get all movies (public, no auth needed)
 app.get("/api/movies", handle(async (req, res) => {
   const db = await getDb();
   const movies = await db.collection("movies").find().toArray();
   res.json(movies);
 }));
 
-// Get movie by ID
+// Get movie by ID (public)
 app.get("/api/movies/:id", handle(async (req, res) => {
   const db = await getDb();
   const movie = await db.collection("movies").findOne({
@@ -96,16 +115,16 @@ app.get("/api/movies/:id", handle(async (req, res) => {
   res.json(movie);
 }));
 
-// Add movie
-app.post("/api/movies", handle(async (req, res) => {
+// Add movie (require auth)
+app.post("/api/movies", verifyToken, handle(async (req, res) => {
   const db = await getDb();
   const movie = { ...req.body, createdAt: new Date() };
   const result = await db.collection("movies").insertOne(movie);
   res.status(201).json({ _id: result.insertedId, ...movie });
 }));
 
-// Update movie
-app.put("/api/movies/:id", handle(async (req, res) => {
+// Update movie (require auth)
+app.put("/api/movies/:id", verifyToken, handle(async (req, res) => {
   const db = await getDb();
   const result = await db.collection("movies").updateOne(
     { _id: new ObjectId(req.params.id) },
@@ -115,9 +134,9 @@ app.put("/api/movies/:id", handle(async (req, res) => {
   if (!result.matchedCount) return res.status(404).json({ message: "Not found" });
   res.json({ message: "Updated" });
 }));
- 
-// Delete movie
-app.delete("/api/movies/:id", handle(async (req, res) => {
+
+// Delete movie (require auth)
+app.delete("/api/movies/:id", verifyToken, handle(async (req, res) => {
   const db = await getDb();
   const result = await db.collection("movies").deleteOne({
     _id: new ObjectId(req.params.id),
@@ -129,16 +148,23 @@ app.delete("/api/movies/:id", handle(async (req, res) => {
 
 // ---------- Watchlist ----------
 
-// Insert
-app.post("/api/watchListInsert", handle(async (req, res) => {
+// Insert (require auth, set addedBy from token, ignore body addedBy)
+app.post("/api/watchListInsert", verifyToken, handle(async (req, res) => {
   const db = await getDb();
-  const movie = { ...req.body, createdAt: new Date() };
+  const movie = { 
+    ...req.body, 
+    addedBy: req.user.uid, // Enforce from authenticated user
+    createdAt: new Date() 
+  };
   const result = await db.collection("watchList").insertOne(movie);
   res.status(201).json({ _id: result.insertedId, ...movie });
 }));
 
-// Get user's watchlist
-app.get("/api/myWatchList/:addedBy", handle(async (req, res) => {
+// Get user's watchlist (require auth, verify addedBy matches user)
+app.get("/api/myWatchList/:addedBy", verifyToken, handle(async (req, res) => {
+  if (req.params.addedBy !== req.user.uid) {
+    return res.status(403).json({ message: "Forbidden: Not your watchlist" });
+  }
   const db = await getDb();
   const items = await db.collection("watchList").find({
     addedBy: req.params.addedBy,
@@ -148,8 +174,11 @@ app.get("/api/myWatchList/:addedBy", handle(async (req, res) => {
   res.json(items);
 }));
 
-// Delete from watchlist
-app.delete("/api/watchListDelete/:addedBy/:movieId", handle(async (req, res) => {
+// Delete from watchlist (require auth, verify addedBy matches user)
+app.delete("/api/watchListDelete/:addedBy/:movieId", verifyToken, handle(async (req, res) => {
+  if (req.params.addedBy !== req.user.uid) {
+    return res.status(403).json({ message: "Forbidden: Not your watchlist" });
+  }
   const db = await getDb();
   const result = await db.collection("watchList").deleteOne({
     addedBy: req.params.addedBy,
@@ -160,8 +189,11 @@ app.delete("/api/watchListDelete/:addedBy/:movieId", handle(async (req, res) => 
   res.json({ success: true, message: "Removed" });
 }));
 
-// Check if movie is in watchlist
-app.get("/api/watchlist/check/:addedBy/:movieId", handle(async (req, res) => {
+// Check if movie is in watchlist (require auth, verify addedBy matches user)
+app.get("/api/watchlist/check/:addedBy/:movieId", verifyToken, handle(async (req, res) => {
+  if (req.params.addedBy !== req.user.uid) {
+    return res.status(403).json({ message: "Forbidden: Not your watchlist" });
+  }
   const db = await getDb();
   const item = await db.collection("watchList").findOne({
     addedBy: req.params.addedBy,
