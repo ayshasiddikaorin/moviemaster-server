@@ -13,7 +13,6 @@ app.use(express.json());
 const allowedOrigins = [
   "http://localhost:5173",
   "https://startling-cupcake-39922c.netlify.app",
-  // Add your Vercel/Netlify domain if needed
 ];
 
 app.use((req, res, next) => {
@@ -42,8 +41,11 @@ function initFirebase() {
     if (process.env.VERCEL || process.env.FIREBASE_SERVICE_ACCOUNT) {
       const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT missing");
-      serviceAccount = JSON.parse(raw);
-    } 
+      // serviceAccount = JSON.parse(raw);
+      serviceAccount = JSON.parse(
+        raw.replace(/\\n/g, "\n")  
+      );
+    }
     // Local development → try file first (safe & easy)
     else {
       serviceAccount = require("../firebase-service-account.json"); // <-- place file in project root
@@ -158,7 +160,7 @@ app.delete("/api/movies/:id", verifyToken, handle(async (req, res) => {
 
 // Watchlist routes (protected + user-enforced)
 app.post("/api/watchListInsert", verifyToken, handle(async (req, res) => {
-  const db = await ReyDb();
+  const db = await getDb();
   const movie = { ...req.body, addedBy: req.user.uid, createdAt: new Date() };
   const result = await db.collection("watchList").insertOne(movie);
   res.status(201).json({ _id: result.insertedId, ...movie });
