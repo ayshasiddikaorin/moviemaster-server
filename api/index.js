@@ -37,18 +37,17 @@ function initFirebase() {
   try {
     let serviceAccount;
 
-    // On Vercel / Production → use environment variable
-    if (process.env.VERCEL || process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT missing");
-      // serviceAccount = JSON.parse(raw);
-      serviceAccount = JSON.parse(
-        raw.replace(/\\n/g, "\n")  
-      );
+    if (process.env.VERCEL || process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+      const base64String = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+      if (!base64String) throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 missing");
+
+      // Decode from base64
+      const jsonString = Buffer.from(base64String, 'base64').toString('utf8');
+      serviceAccount = JSON.parse(jsonString);
     }
-    // Local development → try file first (safe & easy)
+    // Local development
     else {
-      serviceAccount = require("../firebase-service-account.json"); // <-- place file in project root
+      serviceAccount = require("../firebase-service-account.json");
     }
 
     admin.initializeApp({
@@ -59,11 +58,10 @@ function initFirebase() {
     console.log("Firebase Admin initialized successfully");
   } catch (error) {
     console.error("Firebase init failed:", error.message);
-    // Don't crash locally if you're just testing
     if (!process.env.VERCEL) {
       console.log("Running without auth (local dev only)");
     } else {
-      throw error; // Crash in production if config is wrong
+      throw error;
     }
   }
 }
